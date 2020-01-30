@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>A-star寻路算法</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    li {
+      list-style: none;
+    }
+
+    #ulList {
+      height: auto;
+      overflow: hidden;
+      border: 1px solid #000;
+      border-right: none;
+      border-bottom: none;
+      margin: 20px auto;
+    }
+
+    #ulList li {
+      border: 1px solid #000;
+      border-left: none;
+      border-top: none;
+      float: left;
+    }
+
+    #ulList li.sty1 {
+      background: red;
+    }
+
+    #ulList li.sty2 {
+      background: green;
+    }
+
+    #ulList li.sty3 {
+      background: blue;
+    }
+
+    #inputBtn {
+      width: 100px;
+      position: absolute;
+      left: 50%;
+      margin-left: -50px;
+    }
+  </style>
+</head>
+
+<body>
+  <ul id="ulList">
+    <li></li>
+  </ul>
+  <input type="button" value="开始寻路" id="inputBtn">
+  <script>
+    let oUI = document.getElementById('ulList');
+    let li = document.getElementsByTagName('li');
+    let input = document.getElementById('inputBtn');
+    // 起始点
+    let beginLi = document.getElementsByClassName('sty1')
+    let endLi = document.getElementsByClassName('sty2')
+
+    let map = [
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ];
+    // 行数
+    let cols = Math.sqrt(map.length);
+    // 网格大小
+    let sizeGird = 20;
+    // 可能要走的路线
+    let openArr = [];
+    // 以关闭的路线
+    let closeArr = [];
+
+    init();
+    // 网格初始化
+    function init() {
+      createMap()
+      input.onclick = function () {
+        openFn()
+      }
+    }
+
+    // 创建网格地图
+    function createMap() {
+      // 设置网格的宽度
+      oUI.style.width = cols * (sizeGird + 1) + 1 + 'px';
+
+      for (var i = 0; i < map.length; i++) {
+        let oLI = document.createElement('li');
+        oLI.style.width = `${sizeGird}px`;
+        oLI.style.height = `${sizeGird}px`;
+        oUI.appendChild(oLI)
+        if (map[i] == 1) {
+          oLI.className = 'sty1';
+          openArr.push(oLI);
+        } else if (map[i] == 2) {
+          oLI.className = 'sty2';
+        } else if (map[i] == 3) {
+          oLI.className = 'sty3';
+          closeArr.push(oLI);
+        }
+      }
+    }
+
+    function openFn() {
+      let nowLi = openArr.shift();
+
+      if (nowLi == endLi[0]) {
+        showLine();
+        return;
+      }
+
+      closeFn(nowLi);
+      findLi(nowLi);
+      // console.log(openArr);
+      openArr.sort((li1, li2) => li1.num - li2.num)
+      // console.log(openArr)
+      openFn()
+    }
+    // 排除干扰节点
+    function closeFn(nowLi) {
+      closeArr.push(nowLi);
+    }
+
+    // 查找最近节点
+    function findLi(nowLi) {
+      let result = [];
+      for (let i = 0; i < li.length; i++) {
+        if (filter(li[i])) {
+          result.push(li[i]);
+        }
+      }
+      function filter(li) {
+        for (let i = 0; i < closeArr.length; i++) {
+          if (closeArr[i] == li) {
+            return false
+          }
+        }
+        for (let i = 0; i < openArr.length; i++) {
+          if (openArr[i] == li) {
+            return false
+          }
+        }
+        return true
+      }
+      // 获取起始点周围的八个点
+      for (let i = 0; i < result.length; i++) {
+        if ((Math.abs(nowLi.offsetLeft - result[i].offsetLeft) <= sizeGird + 1) && (Math.abs(nowLi.offsetTop - result[i].offsetTop) <= sizeGird + 1)) {
+          result[i].num = f(result[i])
+          console.log(result)
+          result[i].parent = nowLi
+          openArr.push(result[i]);
+        }
+      }
+    }
+
+    function showLine() {
+      let result = [];
+      let lastLi = closeArr.pop();
+      let iNow = 0;
+      findParent(lastLi)
+      function findParent(li) {
+        result.unshift(li)
+        if (li.parent == beginLi[0]) {
+          return;
+        }
+        findParent(li.parent)
+      }
+
+      let timer = setInterval(()=>{
+        result[iNow].style.background = 'red'
+        iNow ++;
+        if (iNow == result.length) {
+          clearInterval(timer)
+        }
+      },500)
+
+    }
+
+    // 估计函数公式 f(n) = g(n) + h(n)
+    // f(n)是n节点的估价函数
+    function f(nodeLi) {
+      return g(nodeLi) + h(nodeLi);
+    }
+    // h(n)是初始点到n节点的最短距离
+    function h(nodeLi) {
+      let a = beginLi[0].offsetLeft - nodeLi.offsetLeft;
+      let b = beginLi[0].offsetTop - nodeLi.offsetTop;
+      return Math.sqrt(a * a + b * b)
+    }
+    // g(n)是n节点到目标点的最短距离
+    function g(nodeLi) {
+      let a = endLi[0].offsetLeft - nodeLi.offsetLeft;
+      let b = endLi[0].offsetTop - nodeLi.offsetTop;
+      return Math.sqrt(a * a + b * b)
+    }
+  </script>
+</body>
+
+</html>
